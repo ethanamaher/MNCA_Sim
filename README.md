@@ -2,8 +2,7 @@
 
 MNCA's are the next step of traditional cellular automata, for example, Conway's Game of Life. By using multiple neighborhoods instead of just one, there is an huge increase in the diversity of states that can emerge.
 
-This is a rewrite of my Java MNCA Simulator in Go. This was more of a test in writing a program for a topic I have good experience in to teach myself Go.
-
+Uses goroutines to break the grid into chunks to calculate next states concurrently.
 
 
 https://github.com/user-attachments/assets/5672f520-ea65-45df-b51b-3c4f10ca7f9f

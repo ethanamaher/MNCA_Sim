@@ -185,6 +185,7 @@ func ParseBool(value string) (bool, error) {
 
 func readNeighborhoods() (EvolutionRules) {
 <<<<<<< HEAD
+<<<<<<< HEAD
     rulesFilePath := "rules/example.txt"
     if len(os.Args) == 2 {
         rulesFilePath = os.Args[1]
@@ -192,6 +193,8 @@ func readNeighborhoods() (EvolutionRules) {
 
     file, err := os.Open(rulesFilePath)
 =======
+=======
+>>>>>>> main
     rulesFile := "rules/example.txt"
     if len(os.Args) == 2 {
         rulesFile = os.Args[1]

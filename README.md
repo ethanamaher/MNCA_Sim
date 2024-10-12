@@ -8,6 +8,7 @@ Uses goroutines to break the grid into chunks to calculate next states concurren
 https://github.com/user-attachments/assets/5672f520-ea65-45df-b51b-3c4f10ca7f9f
 
 
+```go run mnca_sim.go PATH_TO_RULES```
 
 # Inspired by:
 

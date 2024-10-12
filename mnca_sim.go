@@ -16,6 +16,7 @@ import (
 const (
     screenWidth = 512
     screenHeight = 384
+    RULES_PATH = "rules/example.txt"
 )
 
 type Rule struct {
@@ -160,7 +161,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func readNeighborhoods() (EvolutionRules) {
-    file, err := os.Open("rules.txt")
+    file, err := os.Open(RULES_PATH)
     if err != nil {
         log.Fatal(err)
     }

@@ -9,9 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"github.com/hajimehoshi/ebiten/v2"
-
     "runtime"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 const (
@@ -106,6 +105,7 @@ func (w *World) Update() {
     }
 
     wg.Wait()
+
     // swap grids
     w.grid, w.nextGrid = w.nextGrid, w.grid
 }
@@ -161,9 +161,10 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func readNeighborhoods() (EvolutionRules) {
-
-    rulesFile := os.Args[1]
-
+    rulesFile := "rules/example.txt"
+    if len(os.Args) == 2 {
+        rulesFile = os.Args[1]
+    }
     file, err := os.Open(rulesFile)
     if err != nil {
         log.Fatal(err)

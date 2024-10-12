@@ -3,7 +3,7 @@
 MNCA's are the next step of traditional cellular automata, for example, Conway's Game of Life. By using multiple neighborhoods instead of just one, there is an huge increase in the diversity of states that can emerge.
 
 
-https://github.com/user-attachments/assets/5672f520-ea65-45df-b51b-3c4f10ca7f9f
+https://github.com/user-attachments/assets/e4b7c53e-7942-4244-9104-aadc73f8ff9d
 
 
 ```go run mnca_sim.go PATH_TO_RULES```
@@ -12,6 +12,8 @@ https://github.com/user-attachments/assets/5672f520-ea65-45df-b51b-3c4f10ca7f9f
 
 SLACKERMANZ. [Understanding multiple neighborhood cellular automata](https://slackermanz.com/understanding-multiple-neighborhood-cellular-automata/), 2021.
 
-Softology [Multiple Neighborhoods Cellular Automata](https://softologyblog.wordpress.com/2018/03/09/multiple-neighborhoods-cellular-automata/)
+Softology. [Multiple Neighborhoods Cellular Automata](https://softologyblog.wordpress.com/2018/03/09/multiple-neighborhoods-cellular-automata/), 2018
+
+Softology. [Visions of Chaos](https://softology.pro/voc.htm), 2000
 
 saraqael-m. [MNCA](https://github.com/saraqael-m/MNCA/tree/main), 2021.

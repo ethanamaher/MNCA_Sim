@@ -184,26 +184,12 @@ func ParseBool(value string) (bool, error) {
 }
 
 func readNeighborhoods() (EvolutionRules) {
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-    rulesFilePath := "rules/example.txt"
+   rulesFilePath := "rules/example.txt"
     if len(os.Args) == 2 {
         rulesFilePath = os.Args[1]
     }
 
     file, err := os.Open(rulesFilePath)
-=======
-=======
->>>>>>> main
->>>>>>> dev_rulesFilesMod
-    rulesFile := "rules/example.txt"
-    if len(os.Args) == 2 {
-        rulesFile = os.Args[1]
-    }
-    file, err := os.Open(rulesFile)
->>>>>>> 15b4f5d (changes)
     if err != nil {
         log.Fatal(err)
     }
@@ -278,6 +264,7 @@ func readNeighborhoods() (EvolutionRules) {
                     }
 
                 }
+
             }
         } else if strings.HasPrefix(line, "[N") {
             parts := strings.Split(line[1:len(line)-1], " ")

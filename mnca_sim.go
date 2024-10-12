@@ -21,13 +21,18 @@ const (
 
 type Rule struct {
     neighborhood int
-    min, max float32
+    min int
+    max *int
     nextState bool
 }
 
 // Returns where a value is inside a Rule's interval
-func (r *Rule) Contains(val float32) bool {
-    return val >= r.min && val <= r.max
+func (r *Rule) Contains(val int) bool {
+    if r.max != nil {
+        return val >= r.min && val <= *(r.max)
+    } else {
+        return val >= r.min
+    }
 }
 
 type Coordinate struct {
@@ -61,7 +66,7 @@ func InitializeWorld(width, height int) *World {
     }
 
     for i := range w.grid {
-        w.grid[i] = rand.IntN(100) < 60
+        w.grid[i] = rand.IntN(100) < 30
     }
 
     return w
@@ -80,7 +85,7 @@ func (w *World) Update() {
 
         go func(startY, endY int) {
             defer wg.Done()
-            sumAvgs := make([]float32, len(w.rules.neighborhoods))
+            sums := make([]int, len(w.rules.neighborhoods))
 
 
             for y := startY; y < endY; y++ {
@@ -88,13 +93,13 @@ func (w *World) Update() {
                     // calculate % of alive neighbors
                     for i, neighborhood := range w.rules.neighborhoods {
                         nCount := neighborCount(w.grid, w.width, w.height, x, y, &neighborhood)
-                        sumAvgs[i] = float32(nCount) / float32(neighborhood.validNeighbors)
+                        sums[i] = nCount
                     }
 
                     // calculate next state based on EvolutionRules
                     nextState := w.grid[y*w.width+x]
                     for _, rule := range w.rules.rulesList {
-                        if rule.Contains(sumAvgs[rule.neighborhood]) {
+                        if rule.Contains(sums[rule.neighborhood]) {
                             nextState = rule.nextState
                         }
                     }
@@ -116,11 +121,17 @@ func neighborCount(a []bool, width, height, x, y int, n *Neighborhood) int {
         newX := x + coord.x
         newY := y + coord.y
 
-        // inbounds check
-        if newX < 0 || newY < 0 || newX >= width || newY >= height {
-            continue
+        if newX < 0 {
+            newX += width
+        } else if newX >= width {
+            newX -= width
         }
 
+        if newY < 0 {
+            newY += height
+        } else if newY >= height{
+            newY -= height
+        }
         if a[newY*width+newX] {
             c++
         }
@@ -160,72 +171,166 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
 }
 
+type NeighborhoodMap [31][31] bool
+
+// ParseBool converts "0" or "1" to false or true respectively.
+func ParseBool(value string) (bool, error) {
+	if value == "0" {
+		return false, nil
+	} else if value == "1" {
+		return true, nil
+	}
+	return false, fmt.Errorf("invalid value: %s", value)
+}
+
 func readNeighborhoods() (EvolutionRules) {
+    rulesFilePath := "rules/example.txt"
+    if len(os.Args) == 2 {
+        rulesFilePath = os.Args[1]
+    }
 
-    rulesFile := os.Args[1]
-
-    file, err := os.Open(rulesFile)
+    file, err := os.Open(rulesFilePath)
     if err != nil {
         log.Fatal(err)
     }
     defer file.Close()
 
-    scanner := bufio.NewScanner(file)
+    reader := bufio.NewReader(file)
 
-    scanner.Scan()
-    numNeighborhoods, err := strconv.Atoi(scanner.Text())
-    if err != nil {
-        log.Fatal(err)
-    }
+    neighborhoods := make(map[int]NeighborhoodMap)
+    var rules []Rule
+    var currentNeighborhood int
+    var currentRow int
+    inRuleSection := false
 
-    neighborhoods := make([]Neighborhood, numNeighborhoods)
-
-    for i := 0; i < numNeighborhoods; i++ {
-        scanner.Scan()
-        numNeighbors, _ := strconv.Atoi(scanner.Text())
-
-        neighbors := make([]Coordinate, numNeighbors)
-        for j := 0; j < numNeighbors; j++ {
-            scanner.Scan()
-            fields := strings.Fields(scanner.Text())
-
-            x, _ := strconv.Atoi(fields[0])
-            y, _ := strconv.Atoi(fields[1])
-
-            neighbors[j] = Coordinate{x, y}
+    for {
+        line, err  := reader.ReadString('\n')
+        if err != nil {
+            if err.Error() != "EOF" {
+                fmt.Println("Error reading file: ", err)
+            }
+            break
         }
-        neighborhoods[i] = Neighborhood{validNeighbors: numNeighbors, neighbors: neighbors}
-    }
 
-    fmt.Printf("Successfully loaded %d neighborhoods\n", len(neighborhoods))
+        line = strings.TrimSpace(line)
 
-    scanner.Scan()
-    ruleCount, _ := strconv.Atoi(scanner.Text())
+        if line == "[Rule]" {
+            inRuleSection = true
+        }
 
-    rulesList := make([]Rule, ruleCount)
+        if inRuleSection {
+            if strings.Contains(line, "=") {
+                parts := strings.Split(line, "=")
+                ruleID := parts[0]
+                ruleValues := strings.Fields(parts[1])
 
-    for i := 0; i < ruleCount; i++ {
-        scanner.Scan()
-        fields := strings.Fields(scanner.Text())
+                if len(ruleValues) == 3 {
+                    low, _ := strconv.Atoi(ruleValues[0])
+                    next, _ := ParseBool(ruleValues[2])
 
-        neighborhoodNum, _ := strconv.Atoi(fields[0])
-        intervalMin, _ := strconv.ParseFloat(fields[1], 32)
-        intervalMax, _ := strconv.ParseFloat(fields[2], 32)
-        nextState, _ := strconv.ParseBool(fields[3])
+                    if len(ruleID) >= 3 && strings.HasPrefix(ruleID, "S") {
+                        neighborhoodID, _ := strconv.Atoi(string(ruleID[1]))
+                        var high *int
+                        if ruleValues[1] != "0" {
+                            highVal, _ := strconv.Atoi(ruleValues[1])
+                            high = &highVal
+                        }
 
-        rulesList[i] = Rule{
-            neighborhood: neighborhoodNum,
-            min: float32(intervalMin),
-            max: float32(intervalMax),
-            nextState: nextState,
+
+                        rules = append(rules, Rule {
+                            neighborhood: neighborhoodID,
+                            min: low,
+                            max: high,
+                            nextState: next,
+                        })
+                    } else {
+                        fmt.Println("ERROR invalid ruleID format: ", ruleID)
+                    }
+                } else if len(ruleValues) == 2 {
+                    low, _ := strconv.Atoi(ruleValues[0])
+                    next, _ := ParseBool(ruleValues[1])
+
+                    if len(ruleID) >= 3 && strings.HasPrefix(ruleID, "S") {
+                        neighborhoodID, _ := strconv.Atoi(string(ruleID[1]))
+
+                        rules = append(rules, Rule {
+                            neighborhood: neighborhoodID,
+                            min: low,
+                            max: nil,
+                            nextState: next,
+                        })
+                    } else {
+                        fmt.Println("ERROR invalid ruleID format: ", ruleID)
+                    }
+
+                }
+            }
+        } else if strings.HasPrefix(line, "[N") {
+            parts := strings.Split(line[1:len(line)-1], " ")
+			neighborhoodID, _ := strconv.Atoi(strings.TrimPrefix(parts[0], "N"))
+			rowID, _ := strconv.Atoi(parts[1])
+
+			// Update the current neighborhood and row
+			currentNeighborhood = neighborhoodID
+			currentRow = rowID
+
+			// If the neighborhood doesn't exist, initialize it
+			if _, exists := neighborhoods[currentNeighborhood]; !exists {
+				neighborhoods[currentNeighborhood] = NeighborhoodMap{}
+			}
+        } else if strings.HasPrefix(line, "N"){
+            // Parse the line containing column values like N2 1=0
+			parts := strings.Split(line, "=")
+			column, _ := strconv.Atoi(strings.Fields(parts[0])[1])
+			value := parts[1]
+
+
+			// Convert the value to a boolean
+			boolValue, err := ParseBool(value)
+			if err != nil {
+				fmt.Println("Error parsing boolean value:", err)
+				continue
+			}
+
+			// Update the corresponding row and column in the current neighborhood
+			neigh := neighborhoods[currentNeighborhood]
+			neigh[currentRow][column] = boolValue
+			neighborhoods[currentNeighborhood] = neigh
         }
     }
 
-    fmt.Printf("Successfully loaded %d neighborhood rules\n", len(rulesList))
+    relativeNeighborhoods := make([]Neighborhood, len(neighborhoods))
+    for nID, neighborhood := range neighborhoods {
+        var coords []Coordinate
+        for rID, row := range neighborhood {
+            for cID, col := range row {
+                if col {
+                    newX := cID - 15
+                    newY := rID - 15
+                    if newX == 0 && newY == 0 {
+                        continue
+                    }
+                    coords = append(coords, Coordinate {
+                        x: newX,
+                        y: newY,
+                    })
+                }
+            }
+        }
+
+        currentNeighborhood := Neighborhood{
+            validNeighbors: len(coords),
+            neighbors: coords,
+        }
+        relativeNeighborhoods[nID-1] = currentNeighborhood
+    }
+
     return EvolutionRules{
-        neighborhoods: neighborhoods,
-        rulesList: rulesList,
+        numNeighborhoods: len(relativeNeighborhoods),
+        neighborhoods: relativeNeighborhoods,
+        rulesList: rules,
     }
+
 }
 
 func main() {

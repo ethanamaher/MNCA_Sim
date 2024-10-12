@@ -4,10 +4,10 @@ MNCA's are the next step of traditional cellular automata, for example, Conway's
 
 This is a rewrite of my Java MNCA Simulator in Go. This was more of a test in writing a program for a topic I have good experience in to teach myself Go.
 
-Still needs some performance improvements.
 
 
-https://github.com/user-attachments/assets/1cd5f4e3-88bc-4bb4-85cf-ab4cf2011342
+https://github.com/user-attachments/assets/5672f520-ea65-45df-b51b-3c4f10ca7f9f
+
 
 
 # Inspired by:

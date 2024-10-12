@@ -9,14 +9,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
 	"github.com/hajimehoshi/ebiten/v2"
+
+    "runtime"
 )
 
 const (
     screenWidth = 512
     screenHeight = 384
-    RULES_PATH = "rules/example.txt"
 )
 
 type Rule struct {
@@ -69,21 +69,22 @@ func InitializeWorld(width, height int) *World {
 
 func (w *World) Update() {
     var wg sync.WaitGroup
-    rowsPerRoutine := w.height/8
+    chunkSize := w.height / runtime.NumCPU()
 
-    for startY := 0; startY < w.height; startY += rowsPerRoutine {
+    for startY := 0; startY < w.height; startY += chunkSize {
         wg.Add(1)
-        endY := startY + rowsPerRoutine
+        endY := startY + chunkSize
         if endY > w.height {
             endY = w.height
         }
 
-        go func(start, end int) {
+        go func(startY, endY int) {
             defer wg.Done()
-            for y := start; y < end; y++ {
-                for x := 0; x < w.width; x++ {
-                    sumAvgs := make([]float32, len(w.rules.neighborhoods))
+            sumAvgs := make([]float32, len(w.rules.neighborhoods))
 
+
+            for y := startY; y < endY; y++ {
+                for x := 0; x < w.width; x++ {
                     // calculate % of alive neighbors
                     for i, neighborhood := range w.rules.neighborhoods {
                         nCount := neighborCount(w.grid, w.width, w.height, x, y, &neighborhood)
@@ -94,15 +95,14 @@ func (w *World) Update() {
                     nextState := w.grid[y*w.width+x]
                     for _, rule := range w.rules.rulesList {
                         if rule.Contains(sumAvgs[rule.neighborhood]) {
-                        nextState = rule.nextState
+                            nextState = rule.nextState
                         }
                     }
+
                     w.nextGrid[y*w.width+x] = nextState
                 }
             }
         }(startY, endY)
-
-
     }
 
     wg.Wait()
@@ -161,7 +161,10 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func readNeighborhoods() (EvolutionRules) {
-    file, err := os.Open(RULES_PATH)
+
+    rulesFile := os.Args[1]
+
+    file, err := os.Open(rulesFile)
     if err != nil {
         log.Fatal(err)
     }

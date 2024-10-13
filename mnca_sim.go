@@ -19,6 +19,11 @@ const (
     screenHeight = 384
 )
 
+type Cell struct {
+    age int
+    alive bool
+}
+
 type Rule struct {
     neighborhood int
     min int
@@ -51,26 +56,26 @@ type EvolutionRules struct {
 }
 
 type World struct {
-    grid, nextGrid []bool
-    ageGrid, nextAgeGrid []int
+    grid, nextGrid []Cell
     width, height int
     rules EvolutionRules
 }
 
 func InitializeWorld(width, height int) *World {
     w := &World {
-        grid: make([]bool, width*height),
-        nextGrid: make([]bool, width*height),
-        ageGrid: make([]int, width*height),
-        nextAgeGrid: make([]int, width*height),
+        grid: make([]Cell, width*height),
+        nextGrid: make([]Cell, width*height),
         width: width,
         height: height,
         rules: readNeighborhoods(),
     }
 
     for i := range w.grid {
-        w.grid[i] = rand.IntN(100) < 30
-        w.ageGrid[i] = 0
+        startsAlive := rand.IntN(100) < 30
+        w.grid[i] = Cell {
+            age : 1,
+            alive: startsAlive,
+        }
     }
 
     return w
@@ -103,23 +108,23 @@ func (w *World) Update() {
                     idx := y*w.width+x
 
                     // calculate next state based on EvolutionRules
-                    nextState := w.grid[idx]
+                    nextState := w.grid[idx].alive
                     for _, rule := range w.rules.rulesList {
                         if rule.Contains(sums[rule.neighborhood]) {
                             nextState = rule.nextState
                         }
                     }
 
-                    w.nextGrid[idx] = nextState
+                    w.nextGrid[idx].alive = nextState
 
                     if nextState {
-                        if w.grid[idx] {
-                            w.nextAgeGrid[idx]++
+                        if w.nextGrid[idx].alive {
+                            w.nextGrid[idx].age++
                         } else {
-                            w.nextAgeGrid[idx] = 1
+                            w.nextGrid[idx].age = 1
                         }
                     } else {
-                        w.nextAgeGrid[idx] = 0
+                        w.nextGrid[idx].age = 0
                     }
                 }
             }
@@ -130,10 +135,9 @@ func (w *World) Update() {
 
     // swap grids
     w.grid, w.nextGrid = w.nextGrid, w.grid
-    w.ageGrid, w.nextAgeGrid = w.nextAgeGrid, w.ageGrid
 }
 
-func neighborCount(a []bool, width, height, x, y int, n *Neighborhood) int {
+func neighborCount(a []Cell, width, height, x, y int, n *Neighborhood) int {
     c := 0
     for _, coord := range n.neighbors {
         newX := x + coord.x
@@ -150,7 +154,7 @@ func neighborCount(a []bool, width, height, x, y int, n *Neighborhood) int {
         } else if newY >= height{
             newY -= height
         }
-        if a[newY*width+newX] {
+        if a[newY*width+newX].alive {
             c++
         }
     }
@@ -158,10 +162,9 @@ func neighborCount(a []bool, width, height, x, y int, n *Neighborhood) int {
 }
 
 func (w *World) Draw(pix []byte) {
-    for i, alive := range w.grid {
-        age := w.ageGrid[i]
-        if alive {
-            switch age {
+    for i, cell := range w.nextGrid {
+        if cell.alive {
+            switch cell.age {
             case 1:
                 pix[4*i], pix[4*i+1], pix[4*i+2], pix[4*i+3] = 0xff, 0x59, 0x5e, 0xff
             default:

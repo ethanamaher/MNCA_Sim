@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+    "time"
     "runtime"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -51,6 +52,7 @@ type EvolutionRules struct {
 
 type World struct {
     grid, nextGrid []bool
+    ageGrid, nextAgeGrid []int
     width, height int
     rules EvolutionRules
 }
@@ -59,6 +61,8 @@ func InitializeWorld(width, height int) *World {
     w := &World {
         grid: make([]bool, width*height),
         nextGrid: make([]bool, width*height),
+        ageGrid: make([]int, width*height),
+        nextAgeGrid: make([]int, width*height),
         width: width,
         height: height,
         rules: readNeighborhoods(),
@@ -66,6 +70,7 @@ func InitializeWorld(width, height int) *World {
 
     for i := range w.grid {
         w.grid[i] = rand.IntN(100) < 30
+        w.ageGrid[i] = 0
     }
 
     return w
@@ -95,15 +100,27 @@ func (w *World) Update() {
                         sums[i] = nCount
                     }
 
+                    idx := y*w.width+x
+
                     // calculate next state based on EvolutionRules
-                    nextState := w.grid[y*w.width+x]
+                    nextState := w.grid[idx]
                     for _, rule := range w.rules.rulesList {
                         if rule.Contains(sums[rule.neighborhood]) {
                             nextState = rule.nextState
                         }
                     }
 
-                    w.nextGrid[y*w.width+x] = nextState
+                    w.nextGrid[idx] = nextState
+
+                    if nextState {
+                        if w.grid[idx] {
+                            w.nextAgeGrid[idx]++
+                        } else {
+                            w.nextAgeGrid[idx] = 1
+                        }
+                    } else {
+                        w.nextAgeGrid[idx] = 0
+                    }
                 }
             }
         }(startY, endY)
@@ -113,6 +130,7 @@ func (w *World) Update() {
 
     // swap grids
     w.grid, w.nextGrid = w.nextGrid, w.grid
+    w.ageGrid, w.nextAgeGrid = w.nextAgeGrid, w.ageGrid
 }
 
 func neighborCount(a []bool, width, height, x, y int, n *Neighborhood) int {
@@ -140,9 +158,15 @@ func neighborCount(a []bool, width, height, x, y int, n *Neighborhood) int {
 }
 
 func (w *World) Draw(pix []byte) {
-    for i, v := range w.grid {
-        if v {
-            pix[4*i], pix[4*i+1], pix[4*i+2], pix[4*i+3] = 0xff, 0xff, 0xff, 0xff
+    for i, alive := range w.grid {
+        age := w.ageGrid[i]
+        if alive {
+            switch age {
+            case 1:
+                pix[4*i], pix[4*i+1], pix[4*i+2], pix[4*i+3] = 0xff, 0x59, 0x5e, 0xff
+            default:
+                pix[4*i], pix[4*i+1], pix[4*i+2], pix[4*i+3] = 0xff, 0xff, 0xff, 0xff
+          }
         } else {
             pix[4*i], pix[4*i+1], pix[4*i+2], pix[4*i+3] = 0, 0, 0, 0
         }
@@ -184,7 +208,8 @@ func ParseBool(value string) (bool, error) {
 }
 
 func readNeighborhoods() (EvolutionRules) {
-   rulesFilePath := "rules/example.txt"
+    startTime := time.Now()
+    rulesFilePath := "rules/sample03.txt"
     if len(os.Args) == 2 {
         rulesFilePath = os.Args[1]
     }
@@ -275,6 +300,10 @@ func readNeighborhoods() (EvolutionRules) {
 			currentNeighborhood = neighborhoodID
 			currentRow = rowID
 
+
+            //MODIFY THIS SO THAT IT DOESNT NEED TO MAKE NeighborhoodMap
+            // as an intermediate step
+            // just go straight to []Neighborhood
 			// If the neighborhood doesn't exist, initialize it
 			if _, exists := neighborhoods[currentNeighborhood]; !exists {
 				neighborhoods[currentNeighborhood] = NeighborhoodMap{}
@@ -325,7 +354,9 @@ func readNeighborhoods() (EvolutionRules) {
         }
         relativeNeighborhoods[nID-1] = currentNeighborhood
     }
-
+    fmt.Printf("Finished reading %s in: %s\n", rulesFilePath, time.Now().Sub(startTime))
+    fmt.Printf("Loaded %d neighborhoods.\n", len(relativeNeighborhoods))
+    fmt.Printf("Loaded %d rules.\n", len(rules))
     return EvolutionRules{
         numNeighborhoods: len(relativeNeighborhoods),
         neighborhoods: relativeNeighborhoods,
@@ -345,3 +376,4 @@ func main() {
 		log.Fatal(err)
 	}
 }
+

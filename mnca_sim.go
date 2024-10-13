@@ -365,7 +365,6 @@ func readNeighborhoods() (EvolutionRules) {
         neighborhoods: relativeNeighborhoods,
         rulesList: rules,
     }
-
 }
 
 func main() {

@@ -17,6 +17,11 @@ import (
 const (
     screenWidth = 512
     screenHeight = 384
+
+    // Neighborhoods must be input as 31x31 for this to work
+    // Rules files could be modified to give sizes before input so you can convert to relative coordinates correctly
+    dx = 15
+    dy = 15
 )
 
 type Cell struct {
@@ -45,7 +50,7 @@ type Coordinate struct {
 }
 
 type Neighborhood struct {
-    validNeighbors int
+    neighborCount int
     neighbors []Coordinate
 }
 
@@ -198,8 +203,6 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
 }
 
-type NeighborhoodMap [31][31] bool
-
 // ParseBool converts "0" or "1" to false or true respectively.
 func ParseBool(value string) (bool, error) {
 	if value == "0" {
@@ -225,7 +228,7 @@ func readNeighborhoods() (EvolutionRules) {
 
     reader := bufio.NewReader(file)
 
-    neighborhoods := make(map[int]NeighborhoodMap)
+    var neighborhoods []Neighborhood
     var rules []Rule
     var currentNeighborhood int
     var currentRow int
@@ -252,6 +255,7 @@ func readNeighborhoods() (EvolutionRules) {
                 ruleID := parts[0]
                 ruleValues := strings.Fields(parts[1])
 
+                // Kind of scuffed
                 if len(ruleValues) == 3 {
                     low, _ := strconv.Atoi(ruleValues[0])
                     next, _ := ParseBool(ruleValues[2])
@@ -303,14 +307,13 @@ func readNeighborhoods() (EvolutionRules) {
 			currentNeighborhood = neighborhoodID
 			currentRow = rowID
 
+            // If the neighborhood doesn't exist, initialize it
+            if len(neighborhoods) == currentNeighborhood {
+                neighborhoods = append(neighborhoods, Neighborhood{
+                    neighbors: []Coordinate{},
+                })
+            }
 
-            //MODIFY THIS SO THAT IT DOESNT NEED TO MAKE NeighborhoodMap
-            // as an intermediate step
-            // just go straight to []Neighborhood
-			// If the neighborhood doesn't exist, initialize it
-			if _, exists := neighborhoods[currentNeighborhood]; !exists {
-				neighborhoods[currentNeighborhood] = NeighborhoodMap{}
-			}
         } else if strings.HasPrefix(line, "N"){
             // Parse the line containing column values like N2 1=0
 			parts := strings.Split(line, "=")
@@ -326,43 +329,25 @@ func readNeighborhoods() (EvolutionRules) {
 			}
 
 			// Update the corresponding row and column in the current neighborhood
-			neigh := neighborhoods[currentNeighborhood]
-			neigh[currentRow][column] = boolValue
-			neighborhoods[currentNeighborhood] = neigh
-        }
-    }
-
-    relativeNeighborhoods := make([]Neighborhood, len(neighborhoods))
-    for nID, neighborhood := range neighborhoods {
-        var coords []Coordinate
-        for rID, row := range neighborhood {
-            for cID, col := range row {
-                if col {
-                    newX := cID - 15
-                    newY := rID - 15
-                    if newX == 0 && newY == 0 {
-                        continue
-                    }
-                    coords = append(coords, Coordinate {
-                        x: newX,
-                        y: newY,
-                    })
+            if boolValue {
+			    neigh := neighborhoods[currentNeighborhood]
+                newX, newY := currentRow - dx, column - dy
+                // skip middle cell
+                if !(newX==0&&newY==0) {
+                    neigh.neighbors = append(neigh.neighbors, Coordinate{x:newX, y:newY,})
                 }
+			    neighborhoods[currentNeighborhood] = neigh
             }
         }
-
-        currentNeighborhood := Neighborhood{
-            validNeighbors: len(coords),
-            neighbors: coords,
-        }
-        relativeNeighborhoods[nID-1] = currentNeighborhood
     }
+
     fmt.Printf("Finished reading %s in: %s\n", rulesFilePath, time.Now().Sub(startTime))
-    fmt.Printf("Loaded %d neighborhoods.\n", len(relativeNeighborhoods))
+    fmt.Printf("Loaded %d neighborhoods.\n", len(neighborhoods))
     fmt.Printf("Loaded %d rules.\n", len(rules))
+
     return EvolutionRules{
-        numNeighborhoods: len(relativeNeighborhoods),
-        neighborhoods: relativeNeighborhoods,
+        numNeighborhoods: len(neighborhoods),
+        neighborhoods: neighborhoods,
         rulesList: rules,
     }
 }
@@ -378,4 +363,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
